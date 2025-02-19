@@ -1,0 +1,88 @@
+sereja@sereja-HP-Pavilion-Gaming-Laptop-15-ec1xxx:~/Desktop/scrapper/build$ ./scrapper 
+[2025-02-20 03:30:37.032] [info] Current soft limit for number of open file descriptors: 1024
+[2025-02-20 03:30:37.032] [info] Maximum soft limit for number of open file descriptors: 1024
+[2025-02-20 03:30:37.032] [info] Current application limit for descriptors: 512
+[2025-02-20 03:30:37.073] [info] Try to get exchangeinfo
+[2025-02-20 03:30:46.690] [info] Sucessfully received exchangeinfo.
+[2025-02-20 03:30:46.690] [info] Parse new securities
+[2025-02-20 03:30:46.690] [info] Timer: 30
+[2025-02-20 03:30:48.560] [info] Establish websocket connections to securities
+[2025-02-20 03:30:48.560] [info] Adding symbol: ethbtc
+[2025-02-20 03:30:48.561] [info] Adding symbol: ltcbtc
+[2025-02-20 03:30:48.561] [info] Adding symbol: bnbbtc
+[2025-02-20 03:30:48.561] [info] Adding symbol: neobtc
+[2025-02-20 03:30:48.561] [info] Adding symbol: qtumeth
+[2025-02-20 03:30:48.561] [info] Adding symbol: eoseth
+[2025-02-20 03:30:48.561] [info] Adding symbol: snteth
+[2025-02-20 03:30:48.561] [info] Adding symbol: bnteth
+[2025-02-20 03:30:48.561] [info] Adding symbol: bccbtc
+[2025-02-20 03:30:48.562] [info] Adding symbol: gasbtc
+[2025-02-20 03:30:48.562] [info] Adding symbol: bnbeth
+[2025-02-20 03:30:48.562] [info] Adding symbol: btcusdt
+[2025-02-20 03:30:48.562] [info] Adding symbol: ethusdt
+[2025-02-20 03:30:48.562] [info] Adding symbol: hsrbtc
+[2025-02-20 03:30:48.562] [info] Adding symbol: oaxeth
+[2025-02-20 03:30:48.562] [info] Adding symbol: dnteth
+[2025-02-20 03:30:48.562] [info] Adding symbol: mcoeth
+[2025-02-20 03:30:48.562] [info] Adding symbol: icneth
+[2025-02-20 03:30:48.562] [info] Adding symbol: mcobtc
+[2025-02-20 03:30:48.562] [info] Adding symbol: wtcbtc
+[2025-02-20 03:30:48.562] [info] Adding symbol: wtceth
+[2025-02-20 03:30:48.562] [info] Adding symbol: lrcbtc
+[2025-02-20 03:30:48.563] [info] Adding symbol: lrceth
+[2025-02-20 03:30:48.563] [info] Adding symbol: qtumbtc
+[2025-02-20 03:30:48.563] [info] Adding symbol: yoyobtc
+[2025-02-20 03:30:48.563] [info] Adding symbol: omgbtc
+[2025-02-20 03:30:48.563] [info] Adding symbol: omgeth
+[2025-02-20 03:30:48.563] [info] Adding symbol: zrxbtc
+[2025-02-20 03:30:48.563] [info] Adding symbol: zrxeth
+
+
+...
+..
+...
+...
+
+
+[2025-02-20 03:31:08.989] [info] WebSocket 408, connected to /ws/eospax@aggTrade
+[2025-02-20 03:31:08.989] [info] WebSocket 402, connected to /ws/bchabcusdt@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 412, connected to /ws/bnbtusd@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 416, connected to /ws/bnbusdc@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 418, connected to /ws/ethusdc@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 417, connected to /ws/btcusdc@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 421, connected to /ws/xlmusdc@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 420, connected to /ws/eosusdc@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 409, connected to /ws/xlmpax@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 406, connected to /ws/ethpax@aggTrade
+[2025-02-20 03:31:08.990] [info] WebSocket 419, connected to /ws/xrpusdc@aggTrade
+[2025-02-20 03:31:08.991] [info] LTCUSDT: Bought 0.159 at price 134.1. Current Balance: 998421.20758. Current Profit 0.
+[2025-02-20 03:31:08.992] [info] WebSocket 330, connected to /ws/thetabnb@aggTrade
+[2025-02-20 03:31:09.104] [info] BNBUSDT: Sold 0.027 at price 654.87. Profit: 17.68149, Current Balance: 994369.6645299995. Current Profit 377.89077.
+[2025-02-20 03:31:09.111] [info] BNBUSDT: Sold 0.027 at price 654.86. Profit: 17.68122, Current Balance: 994387.3457499995. Current Profit 395.57225999999997.
+[2025-02-20 03:31:09.133] [info] BNBUSDT: Sold 0.036 at price 654.85. Profit: 23.5746, Current Balance: 994410.9203499996. Current Profit 413.25347999999997.
+[2025-02-20 03:31:09.134] [info] BNBUSDT: Sold 0.027 at price 654.84. Profit: 17.680680000000002, Current Balance: 994428.6010299996. Current Profit 436.82807999999994.
+[2025-02-20 03:31:09.203] [info] WebSocket 382, connected to /ws/polybnb@aggTrade
+[2025-02-20 03:31:09.242] [info] BNBUSDT: Sold 0.075 at price 654.84. Profit: 49.113, Current Balance: 994477.7140299996. Current Profit 454.50875999999994.
+[2025-02-20 03:31:09.264] [info] BNBUSDT: Sold 0.109 at price 654.83. Profit: 71.37647, Current Balance: 994549.0904999996. Current Profit 503.62175999999994.
+[2025-02-20 03:31:09.310] [info] WebSocket 422, connected to /ws/usdcusdt@aggTrade
+[2025-02-20 03:31:09.313] [info] WebSocket 415, connected to /ws/xlmtusd@aggTrade
+[2025-02-20 03:31:09.313] [info] WebSocket 423, connected to /ws/adatusd@aggTrade
+[2025-02-20 03:31:09.313] [info] WebSocket 389, connected to /ws/gobnb@aggTrade
+[2025-02-20 03:31:09.313] [info] WebSocket 378, connected to /ws/vetbnb@aggTrade
+[2025-02-20 03:31:09.319] [info] WebSocket 424, connected to /ws/trxtusd@aggTrade
+[2025-02-20 03:31:09.319] [info] WebSocket 368, connected to /ws/denteth@aggTrade
+[2025-02-20 03:31:09.367] [info] BNBUSDT: Sold 0.027 at price 654.83. Profit: 17.680410000000002, Current Balance: 994566.7709099996. Current Profit 574.9982299999999.
+[2025-02-20 03:31:09.370] [info] BNBUSDT: Sold 0.027 at price 654.82. Profit: 17.68014, Current Balance: 994584.4510499996. Current Profit 592.67864.
+[2025-02-20 03:31:09.371] [info] BNBUSDT: Sold 0.027 at price 654.81. Profit: 17.679869999999998, Current Balance: 994602.1309199996. Current Profit 610.35878.
+[2025-02-20 03:31:09.374] [info] BNBUSDT: Sold 0.009 at price 654.8. Profit: 5.893199999999999, Current Balance: 994608.0241199996. Current Profit 628.0386500000001.
+[2025-02-20 03:31:09.374] [info] WebSocket 380, connected to /ws/docketh@aggTrade
+[2025-02-20 03:31:09.431] [info] Sucessfully received exchangeinfo.
+[2025-02-20 03:31:09.431] [info] Parse new securities
+[2025-02-20 03:31:09.431] [info] Timer: 30
+[2025-02-20 03:31:09.441] [info] LTCUSDT: Bought 95.457 at price 134.1. Current Balance: 985620.42388. Current Profit 0.
+[2025-02-20 03:31:09.441] [info] LTCUSDT: Bought 0.039 at price 134.1. Current Balance: 985615.19398. Current Profit 0.
+[2025-02-20 03:31:09.441] [info] LTCUSDT: Bought 11.751 at price 134.09. Current Balance: 984039.50239. Current Profit 0.
+[2025-02-20 03:31:09.442] [info] LTCUSDT: Bought 0.078 at price 134.09. Current Balance: 984029.0433700001. Current Profit 0.
+[2025-02-20 03:31:09.609] [info] WebSocket 401, connected to /ws/bchsvbtc@aggTrade
+[2025-02-20 03:31:09.624] [info] WebSocket 425, connected to /ws/neotusd@aggTrade
+

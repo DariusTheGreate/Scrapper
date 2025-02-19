@@ -1,0 +1,3 @@
+[main]
+    securities = ["abo", "bus"]
+    timer = 10
