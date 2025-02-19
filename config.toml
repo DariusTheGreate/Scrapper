@@ -1,3 +1,4 @@
 [main]
-    securities = ["abo", "bus"]
-    timer = 10
+    securities = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+    timer = 30 
+    filter = "" # to filter securities list that contains "USDT"/"USDC"
