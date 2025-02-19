@@ -39,5 +39,5 @@ also beware that amount of connections will depend on your ```ulimit -n``` numbe
 There is example log "log.txt" thats shows what standart output should be like.
 
 ## Screenshot:
-![Screen](media/exampleOutput.png)
+![Screen](exampleOutput.png)
 
