@@ -5,6 +5,9 @@
 
 The task was to write a service that asynchronously connects to the Binance exchange at api.binance.com and fetches an HTTPS response with the securities that Binance provides. Then, it is required to filter those securities based on a config.toml file. We need to write a parser for this purpose. After that, we need to create numerous WebSocket connections to aggregate trade data. Each WebSocket runs in its own thread(or coroutine or anything else), providing responses from the service. My realization is aware of changes in config and will apply them within timeout specified in config. It handles failed connections by collecting them in a vector, and processing it later. It also stores response from exchangeinfo to a file, for additional security.
 
+## Screenshot:
+![Screen](exampleOutput.png)
+
 ## Architecture..
 I used the following libraries for development: Beast, Asio, tomlplusplus, and spdlog. I also used nlohmann::json for JSON processing. These libraries are fetched during the build process with CMake.
 
@@ -37,7 +40,3 @@ IT IS NECESSARY to have cacert.pem from https://curl.se/docs/caextract.html this
 also beware that amount of connections will depend on your ```ulimit -n``` number of descriptors.
 
 There is example log "log.txt" thats shows what standart output should be like.
-
-## Screenshot:
-![Screen](exampleOutput.png)
-
