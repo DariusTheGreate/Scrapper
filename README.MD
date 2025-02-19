@@ -37,3 +37,7 @@ IT IS NECESSARY to have cacert.pem from https://curl.se/docs/caextract.html this
 also beware that amount of connections will depend on your ```ulimit -n``` number of descriptors.
 
 There is example log "log.txt" thats shows what standart output should be like.
+
+## Screenshot:
+![Screen](media/exampleOutput.png)
+
