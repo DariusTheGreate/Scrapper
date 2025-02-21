@@ -1,10 +1,10 @@
 #include "securitiesManager.h"
 #include <spdlog/spdlog.h>
+#include "Event.h"
 
 // todo: atomic flag pointer - not best solution
-void BinanceSession::run(std::atomic_flag* flg) 
+void BinanceSession::run() 
 {
-    _dataReady = flg;
     resolver_.async_resolve(host_, port_,
     [this](beast::error_code ec, net::ip::tcp::resolver::results_type results) 
     {
@@ -16,13 +16,6 @@ void BinanceSession::run(std::atomic_flag* flg)
  
         onResolve(ec, results);
     });
-}
-
-bool BinanceSession::isDataAvailable() 
-{
-    if(!_dataReady)
-        return false;
-    return _dataReady->test();
 }
 
 void BinanceSession::onResolve(beast::error_code ec, net::ip::tcp::resolver::results_type results) 
@@ -102,8 +95,8 @@ void BinanceSession::onWrite(beast::error_code ec, std::size_t bytes_transferred
     stream_.shutdown(ecTmp); 
     spdlog::info("Sucessfully received exchangeinfo.");
 
-    if(_dataReady)
-        _dataReady->test_and_set();
+    if(_eventToNotify)
+        _eventToNotify->endEvent();
 }
 
 void BinanceSession::fail(beast::error_code ec, char const* what) 

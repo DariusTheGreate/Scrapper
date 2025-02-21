@@ -1,12 +1,21 @@
 #pragma once
 #include "webSocketConnection.h"
+#include "Event.h"
 
-class WebSocketsManager
+class WebSocketsManager 
 {
 public:
     WebSocketsManager();
 
+    void update(const std::vector<std::string>& symbols);
+
     void establishConnections(const std::vector<std::string>& symbols);
+
+    void establishConnectionsInternal(const std::vector<std::string>& symbols);
+
+    void updateConnections(const std::vector<std::string>& symbols);
+
+    void updateConnectionsInternal(const std::vector<std::string>& symbols);
 
     void addClient(const std::string& symbol, boost::asio::ssl::context& ctx, size_t index); 
     
@@ -36,6 +45,7 @@ private:
     std::unordered_map<std::string, std::unique_ptr<WebSocketClient>> _clients;
     boost::asio::io_context ioc;
     boost::asio::ssl::context ctx{ boost::asio::ssl::context::tlsv12_client };
+    Event _connectionsEstablished;
 };
 
 

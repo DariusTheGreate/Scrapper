@@ -45,7 +45,57 @@ WebSocketsManager::WebSocketsManager()
     checkConnectionsLimit();
 }
 
+void WebSocketsManager::update(const std::vector<std::string>& symbols)
+{
+    if(!_connectionsEstablished.isDone())
+        establishConnections(symbols);
+    else
+        updateConnections(symbols);
+}
+
 void WebSocketsManager::establishConnections(const std::vector<std::string>& symbols)
+{
+    std::thread([this, &symbols](){ //dangle!!
+        establishConnectionsInternal(symbols);
+    }).detach();
+}
+
+void WebSocketsManager::establishConnectionsInternal(const std::vector<std::string>& symbols)
+{
+    if(symbols.empty())
+        return;
+    for (size_t i = 0; i < symbols.size(); ++i) 
+    {
+        if(i >= _connectionsLimit)
+        {
+            spdlog::info("WARNING: Exceed connections limit (ulimit)");
+            break;
+        }
+
+        addClient(symbols[i], ctx, i);
+    }
+    _connectionsEstablished.endEvent();
+    ioc.run();
+}
+
+void WebSocketsManager::updateConnections(const std::vector<std::string>& symbols)
+{
+    removeUnnecessaryConnections(symbols);
+    if(!isAbleToAddNewConnections())
+    {
+        spdlog::info("WARNING: Exceed connections limit (ulimit), zero new clients will be added");
+        return;
+    }
+    
+    for(const auto& i : symbols)
+    {
+        if(!isAbleToAddNewConnections())
+            break;
+        addNewClient(i);
+    }
+}
+
+void WebSocketsManager::updateConnectionsInternal(const std::vector<std::string>& symbols)
 {
     if(symbols.empty())
         return;

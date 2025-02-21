@@ -30,14 +30,12 @@ void Service::run()
 {
     try
     {
+        updateConfig();//make it updateSymbols and establish connections immidiatly in case we have exchangeinfo file on start
         auto downloadSecurities = std::async(std::launch::async, [this]()
         {
-            downloadExchangeInfo();
+            _downloadedEvent.downloadExchangeInfo(_serviceConfiguration.timer, _exchangeInfoFilePath, "api.binance.com", "443");
         });
-        auto mainLoop = std::async(std::launch::async, [this]()
-        {
-            update();  
-        }); 
+        update();  
     } 
     catch (std::exception const& e) 
     {
@@ -49,127 +47,36 @@ void Service::update()
 {
     while(1)
     {
-        if(_exchangeDataUpdate.test())
+        if(_downloadedEvent.isDone())
         {
-            parseSecurities();
-        }
-        if(_symbolsUpdate.test())
-        {
-            if(!_connectionsInitiated.test())
-                establishConnections();
-            else
-                updateConnections();
+            updateSymbols();
+            _connectionsManager.update(getSymbols());
+            _downloadedEvent.restartEvent();
         }
     }
 }
 
-void Service::downloadExchangeInfo()
+void Service::updateConfig()
 {
-    boost::asio::io_context ioc;
-    boost::asio::steady_timer timer(ioc, std::chrono::seconds(0)); // Initial delay = 0
-    std::function<void(const boost::beast::error_code&)>timer_callback = [this, &timer, &timer_callback](const boost::beast::error_code& error) 
+    if(!isFileExists("config.toml"))
     {
-        if (!error) 
-        {
-            run_binance_session();
-            timer.expires_at(timer.expiry() + std::chrono::seconds(_serviceConfiguration.timer));
-            timer.async_wait(timer_callback);
-        }
-        else
-        {
-             spdlog::error("Timer error: {}", error.message());
-        }
-    };
-    timer.async_wait(timer_callback); 
-    ioc.run();
-}
-
-void Service::run_binance_session() 
-{
-    try
-    {
-        boost::asio::io_context ioc;
-        BinanceSession session(ioc, ctx, "api.binance.com", "443");
-        spdlog::info("Try to get exchangeinfo");
-        session.run(&_exchangeDataUpdate);
-        ioc.run(); // Blocks session
-    }
-    catch (const std::exception& e) 
-    {
-        spdlog::error("Exception in run_binance_session {}. Probably due to the fact that we handle to much webSockets connections. Try to remove connections and update connections limit", e.what());
-        _connectionsManager.removeSomeConnectionsAndDecreaseConnectionsLimit(100);
-    }
-}
-
-// todo: may combine establishConnections and updateConnections
-void Service::establishConnections()
-{
-    spdlog::info("Establish websocket connections to securities");
-    if(!jsonFileExists(_exchangeInfoFilePath))
-    {
-        spdlog::error("Json file {} is not available.", _exchangeInfoFilePath);
-        _symbolsUpdate.clear();
-        _connectionsInitiated.test_and_set();
-        return;
-    }
-    _connectionsInitiated.test_and_set();
-    std::thread([this](){
-        _connectionsManager.establishConnections(_symbols);
-    }).detach();
-    _connectionsInitiated.test_and_set();
-
-    _symbolsUpdate.clear();
-}
-
-void Service::updateConnections()
-{
-    spdlog::info("Update websocket connections. MaxConnections: {}", _connectionsManager.getConnectionsLimit());
-    if(!jsonFileExists(_exchangeInfoFilePath))
-    {
-        spdlog::error("Json file {} is not available.", _exchangeInfoFilePath);
-        _symbolsUpdate.clear();
-        return;
+        spdlog::info("Config file is not available, use default config.");
     }
 
-    _symbols = Parser::parseSecurities(_exchangeInfoFilePath);
-    _symbols = findIntersection(_symbols, _serviceConfiguration.securities, _serviceConfiguration.filter);
-
-    _connectionsManager.removeUnnecessaryConnections(_symbols);
-    if(!_connectionsManager.isAbleToAddNewConnections())
-    {
-        spdlog::info("WARNING: Exceed connections limit (ulimit), zero new clients will be added");
-        _symbolsUpdate.clear();
-        return;
-    }
-    
-    for(const auto& i : _symbols)
-    {
-        if(!_connectionsManager.isAbleToAddNewConnections())
-            break;
-        _connectionsManager.addNewClient(i);
-    }
-
-    _symbolsUpdate.clear();
-}
-
-void Service::parseSecurities()
-{
-    spdlog::info("Parse new securities");
     _serviceConfiguration = Parser::parseTomlConfig("config.toml");
-    spdlog::info("Timer: {}", _serviceConfiguration.timer);
+    spdlog::info("Config: timer: {}, filter: {}", _serviceConfiguration.timer, _serviceConfiguration.filter);
+}
 
-    if(!jsonFileExists(_exchangeInfoFilePath))
+void Service::updateSymbols()
+{
+    updateConfig();
+    if(!isFileExists(_exchangeInfoFilePath))
     {
         spdlog::error("Json file {} is not available.", _exchangeInfoFilePath);
-        _symbolsUpdate.test_and_set();
-        _exchangeDataUpdate.clear();
         return;
     }
-
     _symbols = Parser::parseSecurities(_exchangeInfoFilePath);
     _symbols = findIntersection(_symbols, _serviceConfiguration.securities, _serviceConfiguration.filter);
-    _symbolsUpdate.test_and_set();
-    _exchangeDataUpdate.clear();
 }
 
 std::vector<std::string> Service::findIntersection(std::vector<std::string>& v, std::vector<std::string>& filter, const std::string& predicateFilter) 
@@ -192,9 +99,19 @@ std::vector<std::string> Service::findIntersection(std::vector<std::string>& v, 
     return result;
 }
 
-bool Service::jsonFileExists(const std::string& filename) 
+bool Service::isFileExists(const std::string& filename) 
 {
     std::ifstream file(filename);
     return file.good();
+}
+
+const std::vector<std::string>& Service::getSymbols() const
+{
+    return _symbols;
+}
+
+const std::string& Service::getSymbolsPath() const
+{
+    return _exchangeInfoFilePath;
 }
 

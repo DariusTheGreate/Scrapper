@@ -31,6 +31,8 @@
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
 
+struct Event;
+
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace net = boost::asio;
@@ -40,17 +42,17 @@ using tcp = net::ip::tcp;
 
 class BinanceSession {
 public:
-    BinanceSession(boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, const std::string& host, const std::string& port)
+    BinanceSession(boost::asio::io_context& ioc, boost::asio::ssl::context& ctx, const std::string& host, const std::string& port, const std::string& filename, Event* eventPtr)
         : resolver_(ioc)
         , stream_(ioc, ctx)
         , host_(host)
         , port_(port)
+        , _filename(filename)
+        , _eventToNotify(eventPtr)
     {
     }
 
-    void run(std::atomic_flag* flg); 
-
-    bool isDataAvailable(); 
+    void run(); 
     
 private:
     void onResolve(beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results); 
@@ -72,6 +74,8 @@ private:
     std::string host_;
     std::string port_;
     std::string _filename = "exchange_info.json";
-    std::atomic_flag* _dataReady = nullptr;
+    Event* _eventToNotify = nullptr;
 };
 
+
+//class OtherSession {}
