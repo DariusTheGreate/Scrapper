@@ -41,7 +41,6 @@ std::string TradingAlgorithm::execute(const std::string& json_string)
         double long_ma = calculateMovingAverage(_longWindow);
         std::string prediction = analyzeMovingAverage(short_ma, long_ma);
 
-        //spdlog::info("Event: {}, Price: {}, Quantity: {}, Short MA: {}, Long MA: {}, Prediction: {}", event_type, price, quantity, short_ma, long_ma, prediction);
         simulateTrade(prediction, price, quantity);
         return prediction;
     }

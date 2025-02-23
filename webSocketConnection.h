@@ -47,7 +47,7 @@ struct FailedConnectionsContainer
 class WebSocketClient
 {
 public:
-    WebSocketClient(net::io_context& ioc, ssl::context& ctx, const std::string& host, const std::string& port, const std::string& symbol, int id)
+    WebSocketClient(net::io_context& ioc, ssl::context& ctx, const std::string& host, const std::string& port, const std::string& symbol)
         : ioc_(ioc)
         , ctx_(ctx)
         , resolver_(ioc_)
@@ -55,7 +55,6 @@ public:
         , host_(host)
         , port_(port)
         , symbol_(symbol)
-        , id_(id)
         , stopping_(false)
     {
         endpoint_ = "/ws/" + symbol_ + "@aggTrade";
@@ -66,8 +65,6 @@ public:
     void stop();
 
     bool isStopped() { return stopped_; }
-
-    void setStopped(bool in) { stopped_ = stopping_ = in; }
 
     bool isStopping() { return stopping_; }
 
@@ -104,7 +101,6 @@ private:
     std::string port_;
     std::string symbol_;
     std::string endpoint_;
-    int id_;
     bool stopping_ = false;
     bool stopped_ = false;
     bool failed_ = false;

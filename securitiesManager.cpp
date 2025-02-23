@@ -56,18 +56,16 @@ void BinanceSession::onWrite(beast::error_code ec, std::size_t bytes_transferred
     http::response_parser<http::file_body> parser;
     constexpr size_t c_exchangeInfoResponseLimit = 1024 * 1024 * 64;
     parser.body_limit(c_exchangeInfoResponseLimit);
-    beast::error_code ecFile;
-    parser.get().body().open(_filename.c_str(), beast::file_mode::write, ecFile);
-    if (ecFile) 
+    parser.get().body().open(_filename.c_str(), beast::file_mode::write, ec);
+    if (ec) 
     {
         spdlog::error("Error during openning of a file: {}", _filename);
         stream_.shutdown(ec); 
-        return;
+        return fail(ec, "file openning");
     }
 
     beast::flat_buffer buffer;
-    bool done = false;
-    while (!done) 
+    while (!parser.is_done()) 
     {
         http::read(stream_, buffer, parser, ec);
         if(ec && ec != net::error::eof) 
@@ -76,9 +74,8 @@ void BinanceSession::onWrite(beast::error_code ec, std::size_t bytes_transferred
             stream_.shutdown(ec);
             if (ec) 
                 spdlog::error("Stream shutdown error: {}", ec.message());
-            return;
+            return fail(ec, "stream shutdown");
         }
-        done = parser.is_done(); 
     }
 
     if(parser.get().result() != http::status::ok)
@@ -89,8 +86,7 @@ void BinanceSession::onWrite(beast::error_code ec, std::size_t bytes_transferred
     }
 
     // eof error is expected
-    if(ec == net::error::eof)
-        ec = {};
+    ec = ec == net::error::eof ? beast::error_code{} : ec;
 
     stream_.shutdown(ec); 
 
@@ -101,7 +97,7 @@ void BinanceSession::onWrite(beast::error_code ec, std::size_t bytes_transferred
 void BinanceSession::fail(beast::error_code ec, char const* what) 
 {
     spdlog::error("BinanceSession error: {}: {}. Program will try again in given timeout(see config.toml)", what, ec.message());
-    // notify in case of failure.
+    // notify even in case of failure.
     if(_eventToNotify)
         _eventToNotify->endEvent();
 }

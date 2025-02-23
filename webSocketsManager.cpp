@@ -65,16 +65,21 @@ void WebSocketsManager::establishConnectionsInternal(const std::vector<std::stri
 {
     if(symbols.empty())
         return;
-    for (size_t i = 0; i < symbols.size(); ++i)
-    {
-        if(i >= _connectionsLimit)
-        {
-            spdlog::info("WARNING: Exceed connections limit (ulimit)");
-            break;
-        }
 
-        addClient(symbols[i], ctx, i);
+    {
+        std::lock_guard<std::mutex> lock(_clientsMutex);
+        for (size_t i = 0; i < symbols.size(); ++i)
+        {
+            if(i >= _connectionsLimit)
+            {
+                spdlog::info("WARNING: Exceed connections limit (ulimit)");
+                break;
+            }
+
+            addClient(symbols[i], ctx);
+        }
     }
+
     _connectionsEstablished.endEvent(); // remember that we have established connections.
     ioc.run();
 }
@@ -82,6 +87,8 @@ void WebSocketsManager::establishConnectionsInternal(const std::vector<std::stri
 void WebSocketsManager::updateConnections(const std::vector<std::string>& symbols)
 {
     spdlog::info("Update connections");
+
+    std::lock_guard<std::mutex> lock(_clientsMutex);
     removeUnnecessaryConnections(symbols);
     for(const auto& i : symbols)
     {
@@ -90,31 +97,44 @@ void WebSocketsManager::updateConnections(const std::vector<std::string>& symbol
             spdlog::info("WARNING: Exceed connections limit (ulimit), zero new clients will be added");
             break;
         }
-
-        if(WebSocketClient::failedConnections.contains(i))
-        {
-            WebSocketClient::failedConnections.remove(i);
-        }
-
-        addClient(i, ctx, 0);
+        WebSocketClient::failedConnections.remove(i);
+        addClient(i, ctx);
     }
 }
 
-void WebSocketsManager::addClient(const std::string& symbol, boost::asio::ssl::context& ctx, size_t index) 
+void WebSocketsManager::addClient(const std::string& symbol, boost::asio::ssl::context& ctx) 
 {
-    std::lock_guard<std::mutex> lock(_clientsMutex);
-    if(_clients.find(symbol) == _clients.end())// || _clients[symbol] == nullptr) //|| _clients[symbol]->isStopped())
+    if(_clients.find(symbol) == _clients.end())
     {
         spdlog::info("Adding symbol: {}", symbol);
         static size_t indexInc = 0; // make it something else
-        _clients[symbol] = std::make_unique<WebSocketClient>(ioc, ctx, "stream.binance.com", "443", symbol, indexInc++);
+        _clients[symbol] = std::make_unique<WebSocketClient>(ioc, ctx, "stream.binance.com", "443", symbol);
         _clients[symbol]->run();
+    }
+}
+
+void WebSocketsManager::removeUnnecessaryConnections(const std::vector<std::string>& symbols)
+{
+    // Remove connections that are not satisfy current filtration or failed
+    std::vector<std::string> clientsToRemove;
+    for(const auto& [k,v] : _clients)
+    {
+        if(std::find(symbols.begin(), symbols.end(), k) == symbols.end() || (v && v->isFailed())) 
+        {
+            if(stopClient(k))
+                clientsToRemove.push_back(k);
+        }
+    }
+
+    for(const auto& k : clientsToRemove)
+    {
+        _clients.erase(k);
+        spdlog::info("Removed WebSocketClient for symbol: {}", k);
     }
 }
 
 bool WebSocketsManager::stopClient(const std::string& symbol) 
 {
-    std::lock_guard<std::mutex> lock(_clientsMutex);
     auto it = _clients.find(symbol);
     if (it != _clients.end() && it->second)
     {
@@ -133,28 +153,6 @@ bool WebSocketsManager::stopClient(const std::string& symbol)
     return false;
 }
 
-void WebSocketsManager::removeUnnecessaryConnections(const std::vector<std::string>& symbols)
-{
-    // Remove connections that are not satisfy current filtration or failed
-    std::vector<std::string> clientsToRemove;
-    for(const auto& [k,v] : _clients)
-    {
-        if(std::find(symbols.begin(), symbols.end(), k) == symbols.end() || (v && v->isFailed()))
-        {
-            if(stopClient(k))
-                clientsToRemove.push_back(k);
-        }
-    }
-
-    //also erase thoose that stopped?
-
-    for(const auto& k : clientsToRemove)
-    {
-        _clients.erase(k);
-        spdlog::info("Removed WebSocketClient for symbol: {}", k);
-    }
-}
-
 void WebSocketsManager::checkConnectionsLimit()
 {
     struct rlimit limit;
@@ -163,13 +161,14 @@ void WebSocketsManager::checkConnectionsLimit()
         spdlog::info("Current soft limit for number of open file descriptors: {}", limit.rlim_cur);
         spdlog::info("Maximum soft limit for number of open file descriptors: {}", limit.rlim_max);
         // Use only half of available file descriptors for now, for stablility
-        _connectionsLimit = limit.rlim_cur;
+        _connectionsLimit = limit.rlim_cur / 2;
         spdlog::info("Current application limit for descriptors: {}", _connectionsLimit);
     }
 }
 
 void WebSocketsManager::stopSomeConnectionsAndDecreaseConnectionsLimit(size_t num)
 {
+    std::lock_guard<std::mutex> lock(_clientsMutex);
     for(const auto& [k,v] : _clients)
     {
         if(num-- > 0)
@@ -180,4 +179,3 @@ void WebSocketsManager::stopSomeConnectionsAndDecreaseConnectionsLimit(size_t nu
         }
     }
 }
-

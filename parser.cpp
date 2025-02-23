@@ -86,9 +86,7 @@ Config Parser::parseTomlConfig(const std::string& filePath)
     }
     catch (const toml::parse_error& err) 
     {
-        spdlog::error("Error parsing TOML file: ", err.description());
-        spdlog::info("Line: ", err.source().begin.line);
-        spdlog::info("Column: ", err.source().begin.column);
+        spdlog::error("Error parsing TOML file: {} line: {} column: {}", err.description(), err.source().begin.line, err.source().begin.column);
     }
 
     return config;

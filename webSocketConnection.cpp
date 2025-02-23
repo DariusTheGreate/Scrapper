@@ -31,12 +31,12 @@ void WebSocketClient::stop()
         }
         catch (const std::exception& e)
         {
-            spdlog::error("Exception while initiating async_close for WebSocket {}: {}", id_, e.what());
+            spdlog::error("Exception while initiating async_close for WebSocket {}: {}", symbol_, e.what());
         }
     }
     else
     {
-        spdlog::info("WebSocket {} is already closed.", id_);
+        spdlog::info("WebSocket {} is already closed.", symbol_);
     }
 }
 
@@ -48,7 +48,7 @@ void WebSocketClient::cancelSSL()
     }
     catch (const std::exception& e)
     {
-        spdlog::error("Exception while cancelling SSL operations for WebSocket {}: {}", id_, e.what());
+        spdlog::error("Exception while cancelling SSL operations for WebSocket {}: {}", symbol_, e.what());
         // .. what can we do ?..
     }
 }
@@ -67,10 +67,10 @@ void WebSocketClient::onClose(beast::error_code ec)
 {
     if (ec && ec != net::error::eof && ec != boost::asio::error::operation_aborted && ec != boost::asio::ssl::error::stream_truncated)
     {
-        spdlog::error("WebSocket {} failed to close: {}", id_, ec.message());
+        spdlog::error("WebSocket {} failed to close: {}", symbol_, ec.message());
         return;
     }
-    spdlog::info("WebSocket {} closed successfully.", id_);
+    spdlog::info("WebSocket {} closed successfully.", symbol_);
 
     stopping_ = false; // dont like this
     stopped_ = true;
@@ -111,7 +111,7 @@ void WebSocketClient::onSslHandshake()
 
 void WebSocketClient::onHandshake() 
 {
-    spdlog::info("WebSocket {}, connected to {}", id_, endpoint_);
+    spdlog::info("WebSocket {}, connected to {}", symbol_, endpoint_);
     readMessage(); 
 }
 
@@ -127,7 +127,7 @@ void WebSocketClient::readMessage()
             {
                 if (ec == websocket::error::closed) 
                 {
-                    spdlog::info("WebSocket {} closed clearly", id_);
+                    spdlog::info("WebSocket {} closed clearly", symbol_);
                 }
                 else 
                 {
@@ -165,7 +165,7 @@ void WebSocketClient::readMessage()
 void WebSocketClient::fail(beast::error_code ec, const char* what)
 {
     // Nice to add immediate reconnections attempts using some exponential backoff strategy
-    spdlog::error("WebSocket {} {}: {}. Adding this symbol {} to failedConnections list.", id_, what, ec.message(), symbol_);
+    spdlog::error("WebSocket {} {}: {}. Adding this symbol {} to failedConnections list.", symbol_, what, ec.message(), symbol_);
     WebSocketClient::failedConnections.add(symbol_); 
     failed_ = true;
     return;

@@ -17,7 +17,7 @@ private:
 
     void updateConnections(const std::vector<std::string>& symbols);
 
-    void addClient(const std::string& symbol, boost::asio::ssl::context& ctx, size_t index); 
+    void addClient(const std::string& symbol, boost::asio::ssl::context& ctx); 
     
     bool stopClient(const std::string& symbol);
 

@@ -30,7 +30,7 @@ void Service::run()
 {
     try
     {
-        updateConfig(); //make it updateSymbols and establish connections immidiatly in case we have exchangeinfo file on start
+        updateConfig();
         auto downloadSecurities = std::async(std::launch::async, [this]()
         {
             try
@@ -97,6 +97,7 @@ std::vector<std::string> Service::findIntersection(std::vector<std::string>& v, 
         std::copy_if(v.begin(), v.end(), std::back_inserter(result), [&predicateFilter](auto& v){ return v.find(predicateFilter) != std::string::npos;});
         return result;
     }
+
     std::vector<std::string> result;
     std::sort(v.begin(), v.end());
     std::sort(filter.begin(), filter.end());
