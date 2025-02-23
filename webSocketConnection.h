@@ -7,7 +7,7 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <string>
-#include <vector>
+#include <unordered_set>
 
 #include <spdlog/spdlog.h>
 
@@ -22,8 +22,26 @@ namespace ssl = boost::asio::ssl;
 
 struct FailedConnectionsContainer
 {
-    std::vector<std::string> symbols;
+    std::unordered_set<std::string> symbols;
     std::mutex mutex;
+
+    void add(const std::string& symbol)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        symbols.insert(symbol);
+    }
+
+    void remove(const std::string& symbol)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        symbols.erase(symbol);
+    }
+
+    bool contains(const std::string& symbol)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        return symbols.count(symbol) > 0;
+    }
 };
 
 class WebSocketClient
@@ -46,9 +64,21 @@ public:
     void run(); 
     
     void stop();
+
+    bool isStopped() { return stopped_; }
+
+    void setStopped(bool in) { stopped_ = stopping_ = in; }
+
+    bool isStopping() { return stopping_; }
     
 private:
     
+    void cancelSSL();
+
+    void closeConnectionAsync();
+
+    void onClose(beast::error_code ec);
+
     void onResolve(net::ip::tcp::resolver::results_type results);
     
     void onConnect(net::ip::tcp::endpoint ep);
@@ -74,6 +104,7 @@ private:
     std::string endpoint_;
     int id_;
     bool stopping_ = false;
+    bool stopped_ = false;
 public:
     static FailedConnectionsContainer failedConnections;
 };

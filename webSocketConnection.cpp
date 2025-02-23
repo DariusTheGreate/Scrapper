@@ -5,16 +5,14 @@
 
 void WebSocketClient::run() 
 {
+    stopped_ = false;
     if (stopping_) return; 
 
     resolver_.async_resolve(host_, port_,
         [this](beast::error_code ec, net::ip::tcp::resolver::results_type results) 
         {
             if (ec) 
-            {
-                fail(ec, "resolve");
-                return;
-            }
+                return fail(ec, "resolve");
             onResolve(results);
         });
 }
@@ -22,6 +20,26 @@ void WebSocketClient::run()
 void WebSocketClient::stop()
 {
     stopping_ = true;
+    //cancelSSL();
+    if (ws_.is_open())
+    {
+        try
+        {
+            closeConnectionAsync();
+        }
+        catch (const std::exception& e)
+        {
+            spdlog::error("Exception while initiating async_close for WebSocket {}: {}", id_, e.what());
+        }
+    }
+    else
+    {
+        spdlog::info("WebSocket {} is already closed.", id_);
+    }
+}
+
+void WebSocketClient::cancelSSL()
+{
     try
     {
         ws_.next_layer().next_layer().cancel(); // Cancel SSL operations
@@ -29,38 +47,32 @@ void WebSocketClient::stop()
     catch (const std::exception& e)
     {
         spdlog::error("Exception while cancelling SSL operations for WebSocket {}: {}", id_, e.what());
+        // .. what can we do ?..
     }
+}
 
-    if (ws_.is_open())
-    {
-        try
+void WebSocketClient::closeConnectionAsync()
+{
+    beast::error_code ec;
+    ws_.async_close(beast::websocket::close_code::normal,
+        [this](beast::error_code ec)
         {
-            beast::error_code ec;
-            ws_.async_close(beast::websocket::close_code::normal,
-            [this](beast::error_code ec)
-            {
-                if (ec && ec != net::error::eof && ec != boost::asio::error::operation_aborted && ec != boost::asio::ssl::error::stream_truncated)
-                {
-                    spdlog::error("WebSocket {} failed to close: {}", id_, ec.message());
-                }
-                else
-                {
-                    spdlog::info("WebSocket {} closed successfully.", id_);
-                }
-                stopping_ = false;
-            });
-        }
-        catch (const std::exception& e)
-        {
-            spdlog::error("Exception while initiating async_close for WebSocket {}: {}", id_, e.what());
-            stopping_ = false; 
-        }
-    }
-    else
+            onClose(ec);
+        });
+    spdlog::info("end of closeConnectionAsync()");
+}
+
+void WebSocketClient::onClose(beast::error_code ec)
+{
+    if (ec && ec != net::error::eof && ec != boost::asio::error::operation_aborted && ec != boost::asio::ssl::error::stream_truncated)
     {
-        spdlog::info("WebSocket {} is already closed.", id_);
+        spdlog::error("WebSocket {} failed to close: {}", id_, ec.message());
+        return;
     }
-    spdlog::info("Stopping WebSocket client for symbol: {}", symbol_);
+    spdlog::info("WebSocket {} closed successfully.", id_);
+
+    stopping_ = false; // dont like this
+    stopped_ = true;
 }
 
 void WebSocketClient::onResolve(net::ip::tcp::resolver::results_type results) 
@@ -69,10 +81,7 @@ void WebSocketClient::onResolve(net::ip::tcp::resolver::results_type results)
         [this](beast::error_code ec, net::ip::tcp::endpoint ep) 
         {
             if (ec) 
-            {
-                fail(ec, "connect");
-                return;
-            }
+                return fail(ec, "connect");
             onConnect(ep);
         });
 }
@@ -83,10 +92,7 @@ void WebSocketClient::onConnect(net::ip::tcp::endpoint ep)
         [this](beast::error_code ec) 
         {
             if (ec) 
-            {
-                fail(ec, "ssl_handshake");
-                return;
-            }
+                return fail(ec, "ssl_handshake");
             onSslHandshake();
         });
 }
@@ -97,10 +103,7 @@ void WebSocketClient::onSslHandshake()
         [this](beast::error_code ec) 
         {
             if (ec) 
-            {
-                fail(ec, "handshake");
-                return;
-            }
+                return fail(ec, "handshake");
             onHandshake();
         });
 }
@@ -116,7 +119,7 @@ void WebSocketClient::readMessage()
     ws_.async_read(buffer_,
         [this](beast::error_code ec, std::size_t bytes_transferred) 
         {
-            if(stopping_)
+            if(stopping_ || stopped_)
                 return;
 
             if (ec) 
@@ -134,30 +137,28 @@ void WebSocketClient::readMessage()
                 return;
             }
 
-            //Unocomment to test stability in case of disconnect
+            //Unocomment to fast test stability in case of disconnect
             /*static int c = 0;
             static int failC = 50;
             if(symbol_ == "btcusdt" && c++ == failC)
                 fail({}, "random error");
             */
 
-            const char* data_ptr = boost::asio::buffer_cast<const char*>(buffer_.data());
-            size_t data_len = buffer_.size();
-
-            std::string tradeData = std::string(data_ptr, data_len);
-            //spdlog::info("{}", tradeData);
-            algorithm_.execute(tradeData);
+            const char* dataPtr = boost::asio::buffer_cast<const char*>(buffer_.data());
+            std::string tradeData = std::string(dataPtr, buffer_.size());
+            //spdlog::info(tradeData);
+            algorithm_.execute(tradeData); // async for this to since its block whole websocket?
 
             buffer_.consume(bytes_transferred);
-            readMessage(); 
+            readMessage(); // TODO: can this lead to stack overflow if read is too fast?.. 
         });
 }
 
 void WebSocketClient::fail(beast::error_code ec, const char* what)
 {
+    // Nice to add immediate reconnections attempts using some exponential backoff strategy
     spdlog::error("WebSocket {} {}: {}. Adding this symbol {} to failedConnections list.", id_, what, ec.message(), symbol_);
-    std::lock_guard<std::mutex> lock(failedConnections.mutex);
-    failedConnections.symbols.push_back(symbol_);
+    WebSocketClient::failedConnections.add(symbol_); 
     return;
 }
 

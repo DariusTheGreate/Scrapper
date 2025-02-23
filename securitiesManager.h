@@ -31,6 +31,8 @@
 #include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket/ssl.hpp>
 
+#include <spdlog/spdlog.h>
+
 struct Event;
 
 namespace beast = boost::beast;
@@ -50,6 +52,8 @@ public:
         , _filename(filename)
         , _eventToNotify(eventPtr)
     {
+        if(_filename.empty())
+            spdlog::info("WARNING: filepath to save securities symbols is empty.");
     }
 
     void run(); 
@@ -69,8 +73,6 @@ private:
     http::request<http::string_body> _req{ http::verb::get, "/api/v3/exchangeInfo", 11 };
     net::ip::tcp::resolver resolver_;
     beast::ssl_stream<net::ip::tcp::socket> stream_;
-    boost::asio::streambuf buffer_;
-    http::response<http::dynamic_body> res_;
     std::string host_;
     std::string port_;
     std::string _filename = "exchange_info.json";

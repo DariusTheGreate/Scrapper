@@ -30,10 +30,10 @@ void Service::run()
 {
     try
     {
-        updateConfig();//make it updateSymbols and establish connections immidiatly in case we have exchangeinfo file on start
+        updateConfig(); //make it updateSymbols and establish connections immidiatly in case we have exchangeinfo file on start
         auto downloadSecurities = std::async(std::launch::async, [this]()
         {
-            _downloadedEvent.downloadExchangeInfo(_serviceConfiguration.timer, _exchangeInfoFilePath, "api.binance.com", "443");
+            _downloadedEvent.downloadExchangeInfo();
         });
         update();  
     } 
@@ -64,6 +64,7 @@ void Service::updateConfig()
     }
 
     _serviceConfiguration = Parser::parseTomlConfig("config.toml");
+    _downloadedEvent.setTimeOut(_serviceConfiguration.timer);
     spdlog::info("Config: timer: {}, filter: {}", _serviceConfiguration.timer, _serviceConfiguration.filter);
 }
 

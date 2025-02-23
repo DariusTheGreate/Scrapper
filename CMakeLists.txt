@@ -14,14 +14,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Boost)
 
-FetchContent_Declare(
-  Boost
-  GIT_REPOSITORY https://github.com/boostorg/boost.git
-  GIT_TAG boost-1.85.0
-  GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(Boost)
-
 FetchContent_Declare(json
     URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)

@@ -55,7 +55,8 @@ void WebSocketsManager::update(const std::vector<std::string>& symbols)
 
 void WebSocketsManager::establishConnections(const std::vector<std::string>& symbols)
 {
-    std::thread([this, &symbols](){ //dangle!!
+    // new thread because it will call ioc.run() and block thread
+    std::thread([this, &symbols](){ 
         establishConnectionsInternal(symbols);
     }).detach();
 }
@@ -64,7 +65,7 @@ void WebSocketsManager::establishConnectionsInternal(const std::vector<std::stri
 {
     if(symbols.empty())
         return;
-    for (size_t i = 0; i < symbols.size(); ++i) 
+    for (size_t i = 0; i < symbols.size(); ++i)
     {
         if(i >= _connectionsLimit)
         {
@@ -74,121 +75,87 @@ void WebSocketsManager::establishConnectionsInternal(const std::vector<std::stri
 
         addClient(symbols[i], ctx, i);
     }
-    _connectionsEstablished.endEvent();
+    _connectionsEstablished.endEvent(); // remember that we have established connections.
     ioc.run();
 }
 
 void WebSocketsManager::updateConnections(const std::vector<std::string>& symbols)
 {
     removeUnnecessaryConnections(symbols);
-    if(!isAbleToAddNewConnections())
-    {
-        spdlog::info("WARNING: Exceed connections limit (ulimit), zero new clients will be added");
-        return;
-    }
-    
     for(const auto& i : symbols)
     {
         if(!isAbleToAddNewConnections())
-            break;
-        addNewClient(i);
-    }
-}
-
-void WebSocketsManager::updateConnectionsInternal(const std::vector<std::string>& symbols)
-{
-    if(symbols.empty())
-        return;
-    for (size_t i = 0; i < symbols.size(); ++i) 
-    {
-        if(i  >= _connectionsLimit)
         {
-            spdlog::info("WARNING: Exceed connections limit (ulimit)");
+            spdlog::info("WARNING: Exceed connections limit (ulimit), zero new clients will be added");
             break;
         }
-
-        addClient(symbols[i], ctx, i);
+        addClient(i, ctx, 0);
     }
-    ioc.run();
 }
 
 void WebSocketsManager::addClient(const std::string& symbol, boost::asio::ssl::context& ctx, size_t index) 
 {
     std::lock_guard<std::mutex> lock(_clientsMutex);
-    if (!containsSymbol(symbol)) 
+    if(_clients.find(symbol) == _clients.end())// || _clients[symbol] == nullptr) //|| _clients[symbol]->isStopped())
     {
         spdlog::info("Adding symbol: {}", symbol);
-        _clients[symbol] = std::make_unique<WebSocketClient>(ioc, ctx, "stream.binance.com", "443", symbol, index);
+        static size_t indexInc = 0; // make it something else
+        _clients[symbol] = std::make_unique<WebSocketClient>(ioc, ctx, "stream.binance.com", "443", symbol, indexInc++);
         _clients[symbol]->run();
     }
 }
 
-void WebSocketsManager::addNewClient(const std::string& symbol) 
-{
-    if(_clients.size()  >= _connectionsLimit)
-    {
-        spdlog::info("WARNING: Exceed connections limit (ulimit), zero new clients will be added");
-        return;
-    }
-    std::thread([this, symbol]()
-    {
-       addClient(symbol, ctx, _clients.size());
-    }).detach();
-}
-
-void WebSocketsManager::removeClient(const std::string& symbol) {
-    std::thread([this, symbol]()
-    {
-        removeClientInternal(symbol);
-    }).detach();
-}
-
-void WebSocketsManager::removeClientInternal(const std::string& symbol) 
+bool WebSocketsManager::removeClient(const std::string& symbol) 
 {
     std::lock_guard<std::mutex> lock(_clientsMutex);
     auto it = _clients.find(symbol);
-    if (it != _clients.end())
+    if (it != _clients.end() && it->second)
     {
-        it->second->stop(); 
-        _clients.erase(it);
-        spdlog::info("Removed WebSocketClient for symbol: {}", symbol);
+        if(!it->second->isStopped() && !it->second->isStopping())
+        {
+            it->second->stop(); 
+            spdlog::info("Stopping WebSocketClient for symbol: {}", symbol);
+            return false;
+        }
+        else if(it->second->isStopped())
+        {
+            //it->second = nullptr;
+            spdlog::info("Removed WebSocketClient for symbol: {}", symbol);
+            return true;
+        }
     }
-    else
-    {
-        spdlog::info("WebSocketClient not found for symbol: {}", symbol);
-    }
-}
-
-bool WebSocketsManager::containsSymbol(const std::string& symbol)
-{
-    return _clients.find(symbol) != _clients.end();
-}
-
-size_t WebSocketsManager::getNumOfClients() const
-{
-    return _clients.size();
+    spdlog::info("WebSocketClient not found for symbol: {}", symbol);
+    return false;
 }
 
 void WebSocketsManager::removeUnnecessaryConnections(const std::vector<std::string>& symbols)
 {
     // Remove connections that are failed or stalled or anything else.
     {
-        std::unique_lock lk(WebSocketClient::failedConnections.mutex);
-        auto& failedSockets = WebSocketClient::failedConnections.symbols;
-        for(auto& s : failedSockets)
+        for(const auto& s : symbols)
         {
-            removeClient(s);
+            if(WebSocketClient::failedConnections.contains(s))
+            {
+                removeClient(s);
+                WebSocketClient::failedConnections.remove(s);
+            }
         }
-        failedSockets.clear();
     }
 
+    std::vector<std::string> clientsToRemove;
     // Remove connections that are not satisfy current filtration
     for(const auto& [k,v] : _clients)
     {
         if(std::find(symbols.begin(), symbols.end(), k) == symbols.end())
         {
-            removeClient(k);
+            if(removeClient(k))
+                clientsToRemove.push_back(k);
         }
+    }
+
+    for(const auto& k : clientsToRemove)
+    {
+        _clients.erase(k);
     }
 }
 
@@ -203,16 +170,6 @@ void WebSocketsManager::checkConnectionsLimit()
         _connectionsLimit = limit.rlim_cur / 2;
         spdlog::info("Current application limit for descriptors: {}", _connectionsLimit);
     }
-}
-
-size_t WebSocketsManager::getConnectionsLimit() const
-{
-    return _connectionsLimit;
-}
-
-bool WebSocketsManager::isAbleToAddNewConnections()
-{
-    return _clients.size() < _connectionsLimit;
 }
 
 void WebSocketsManager::removeSomeConnectionsAndDecreaseConnectionsLimit(size_t num)

@@ -1,18 +1,13 @@
 #include "securitiesManager.h"
-#include <spdlog/spdlog.h>
 #include "Event.h"
 
-// todo: atomic flag pointer - not best solution
 void BinanceSession::run() 
 {
     resolver_.async_resolve(host_, port_,
     [this](beast::error_code ec, net::ip::tcp::resolver::results_type results) 
     {
         if (ec) 
-        {
-            fail(ec, "resolve");
-            return;
-        }
+            return fail(ec, "resolve");
  
         onResolve(ec, results);
     });
@@ -61,11 +56,12 @@ void BinanceSession::onWrite(beast::error_code ec, std::size_t bytes_transferred
     http::response_parser<http::file_body> parser;
     constexpr size_t c_exchangeInfoResponseLimit = 1024 * 1024 * 64;
     parser.body_limit(c_exchangeInfoResponseLimit);
-    beast::error_code ec_file;
-    parser.get().body().open(_filename.c_str(), beast::file_mode::write, ec_file);
-    if (ec_file) 
+    beast::error_code ecFile;
+    parser.get().body().open(_filename.c_str(), beast::file_mode::write, ecFile);
+    if (ecFile) 
     {
-        spdlog::error("Error during openning of a file:{}", _filename);
+        spdlog::error("Error during openning of a file: {}", _filename);
+        stream_.shutdown(ec); 
         return;
     }
 
@@ -74,26 +70,29 @@ void BinanceSession::onWrite(beast::error_code ec, std::size_t bytes_transferred
     while (!done) 
     {
         http::read(stream_, buffer, parser, ec);
-        if (ec == net::error::eof) 
-            ec = {}; 
-        if(ec) 
+        if(ec && ec != net::error::eof) 
         {
-            spdlog::error("HTTP read error: ", ec.message());
+            spdlog::error("HTTP read error: {}", ec.message());
             stream_.shutdown(ec);
             if (ec) 
-                spdlog::error("Stream shutdown error: ", ec.message());
+                spdlog::error("Stream shutdown error: {}", ec.message());
             return;
         }
         done = parser.is_done(); 
     }
+
     if(parser.get().result() != http::status::ok)
     {
         spdlog::error("HTTP request failed: ");
+        stream_.shutdown(ec); 
         return;
     }
-    auto ecTmp = beast::error_code();
-    stream_.shutdown(ecTmp); 
-    spdlog::info("Sucessfully received exchangeinfo.");
+
+    // eof error is expected
+    if(ec == net::error::eof)
+        ec = {};
+
+    stream_.shutdown(ec); 
 
     if(_eventToNotify)
         _eventToNotify->endEvent();
@@ -103,5 +102,3 @@ void BinanceSession::fail(beast::error_code ec, char const* what)
 {
     spdlog::error("BinanceSession error: {}: {}. Program will try again in given timeout(see config.toml)", what, ec.message());
 }
-
-

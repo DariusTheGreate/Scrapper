@@ -8,7 +8,7 @@
 class Service
 {
 public:
-    Service(const std::string& fp) : _exchangeInfoFilePath(fp) {}
+    Service(const std::string& fp) : _exchangeInfoFilePath(fp), _downloadedEvent(30, fp, "api.binance.com", "443") {}
 
     void run();
 private:
