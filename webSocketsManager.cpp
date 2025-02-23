@@ -81,6 +81,7 @@ void WebSocketsManager::establishConnectionsInternal(const std::vector<std::stri
 
 void WebSocketsManager::updateConnections(const std::vector<std::string>& symbols)
 {
+    spdlog::info("Update connections");
     removeUnnecessaryConnections(symbols);
     for(const auto& i : symbols)
     {
@@ -89,6 +90,12 @@ void WebSocketsManager::updateConnections(const std::vector<std::string>& symbol
             spdlog::info("WARNING: Exceed connections limit (ulimit), zero new clients will be added");
             break;
         }
+
+        if(WebSocketClient::failedConnections.contains(i))
+        {
+            WebSocketClient::failedConnections.remove(i);
+        }
+
         addClient(i, ctx, 0);
     }
 }
@@ -105,7 +112,7 @@ void WebSocketsManager::addClient(const std::string& symbol, boost::asio::ssl::c
     }
 }
 
-bool WebSocketsManager::removeClient(const std::string& symbol) 
+bool WebSocketsManager::stopClient(const std::string& symbol) 
 {
     std::lock_guard<std::mutex> lock(_clientsMutex);
     auto it = _clients.find(symbol);
@@ -119,8 +126,6 @@ bool WebSocketsManager::removeClient(const std::string& symbol)
         }
         else if(it->second->isStopped())
         {
-            //it->second = nullptr;
-            spdlog::info("Removed WebSocketClient for symbol: {}", symbol);
             return true;
         }
     }
@@ -130,32 +135,23 @@ bool WebSocketsManager::removeClient(const std::string& symbol)
 
 void WebSocketsManager::removeUnnecessaryConnections(const std::vector<std::string>& symbols)
 {
-    // Remove connections that are failed or stalled or anything else.
-    {
-        for(const auto& s : symbols)
-        {
-            if(WebSocketClient::failedConnections.contains(s))
-            {
-                removeClient(s);
-                WebSocketClient::failedConnections.remove(s);
-            }
-        }
-    }
-
+    // Remove connections that are not satisfy current filtration or failed
     std::vector<std::string> clientsToRemove;
-    // Remove connections that are not satisfy current filtration
     for(const auto& [k,v] : _clients)
     {
-        if(std::find(symbols.begin(), symbols.end(), k) == symbols.end())
+        if(std::find(symbols.begin(), symbols.end(), k) == symbols.end() || (v && v->isFailed()))
         {
-            if(removeClient(k))
+            if(stopClient(k))
                 clientsToRemove.push_back(k);
         }
     }
 
+    //also erase thoose that stopped?
+
     for(const auto& k : clientsToRemove)
     {
         _clients.erase(k);
+        spdlog::info("Removed WebSocketClient for symbol: {}", k);
     }
 }
 
@@ -167,19 +163,19 @@ void WebSocketsManager::checkConnectionsLimit()
         spdlog::info("Current soft limit for number of open file descriptors: {}", limit.rlim_cur);
         spdlog::info("Maximum soft limit for number of open file descriptors: {}", limit.rlim_max);
         // Use only half of available file descriptors for now, for stablility
-        _connectionsLimit = limit.rlim_cur / 2;
+        _connectionsLimit = limit.rlim_cur;
         spdlog::info("Current application limit for descriptors: {}", _connectionsLimit);
     }
 }
 
-void WebSocketsManager::removeSomeConnectionsAndDecreaseConnectionsLimit(size_t num)
+void WebSocketsManager::stopSomeConnectionsAndDecreaseConnectionsLimit(size_t num)
 {
     for(const auto& [k,v] : _clients)
     {
         if(num-- > 0)
         {
             spdlog::info("Remove client number {}", num+1);
-            removeClient(k);
+            stopClient(k);
             _connectionsLimit--;
         }
     }

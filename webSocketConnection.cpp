@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <thread>
+#include <ctime>
+#include <cstdlib>
 
 void WebSocketClient::run() 
 {
@@ -59,7 +61,6 @@ void WebSocketClient::closeConnectionAsync()
         {
             onClose(ec);
         });
-    spdlog::info("end of closeConnectionAsync()");
 }
 
 void WebSocketClient::onClose(beast::error_code ec)
@@ -143,6 +144,13 @@ void WebSocketClient::readMessage()
             if(symbol_ == "btcusdt" && c++ == failC)
                 fail({}, "random error");
             */
+            
+            /*srand(static_cast<unsigned int>(time(0)));
+            if(1 + (rand() % 21) == 7)
+            {
+                fail({}, "random error");
+                return;
+            }*/
 
             const char* dataPtr = boost::asio::buffer_cast<const char*>(buffer_.data());
             std::string tradeData = std::string(dataPtr, buffer_.size());
@@ -159,6 +167,7 @@ void WebSocketClient::fail(beast::error_code ec, const char* what)
     // Nice to add immediate reconnections attempts using some exponential backoff strategy
     spdlog::error("WebSocket {} {}: {}. Adding this symbol {} to failedConnections list.", id_, what, ec.message(), symbol_);
     WebSocketClient::failedConnections.add(symbol_); 
+    failed_ = true;
     return;
 }
 

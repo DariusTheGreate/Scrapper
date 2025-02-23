@@ -9,6 +9,7 @@ public:
 
     void update(const std::vector<std::string>& symbols);
 
+    void stopSomeConnectionsAndDecreaseConnectionsLimit(size_t num);
 private:
     void establishConnections(const std::vector<std::string>& symbols);
 
@@ -18,7 +19,7 @@ private:
 
     void addClient(const std::string& symbol, boost::asio::ssl::context& ctx, size_t index); 
     
-    bool removeClient(const std::string& symbol);
+    bool stopClient(const std::string& symbol);
 
     bool containsSymbol(const std::string& symbol) const { return _clients.find(symbol) != _clients.end(); }
 
@@ -31,8 +32,6 @@ private:
     size_t getConnectionsLimit() const { return _connectionsLimit; }
 
     bool isAbleToAddNewConnections()const { return _clients.size() < _connectionsLimit; }
-
-    void removeSomeConnectionsAndDecreaseConnectionsLimit(size_t num);
 
 private:
     std::mutex _clientsMutex;

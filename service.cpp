@@ -33,7 +33,16 @@ void Service::run()
         updateConfig(); //make it updateSymbols and establish connections immidiatly in case we have exchangeinfo file on start
         auto downloadSecurities = std::async(std::launch::async, [this]()
         {
-            _downloadedEvent.downloadExchangeInfo();
+            try
+            {
+                _downloadedEvent.downloadExchangeInfo();
+            }
+            catch(const std::exception& e)
+            {
+                spdlog::error("Exception {} when trying to download exchange info. Probably due to using to much web socket connections. Trying resolve problem by removing some connections..", e.what());
+                _connectionsManager.stopSomeConnectionsAndDecreaseConnectionsLimit(50);
+            }
+            
         });
         update();  
     } 

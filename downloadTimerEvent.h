@@ -39,21 +39,13 @@ struct DownloadOnTimerEvent : Event
 
     void runBinanceSession() 
     {
-        try
-        {
-            boost::asio::io_context ioc;
+        boost::asio::io_context ioc;
 
-            // Create new session each time executed, since it is new session..
-            TSession session(ioc, _ctx, _host, _port, _symbolsPath, this); // pass "this" as event to update
-            spdlog::info("Try to get exchangeinfo");
-            session.run();
-            ioc.run(); // Blocks session
-        }
-        catch (const std::exception& e) 
-        {
-            spdlog::error("Exception in runBinanceSession {}. Probably due to the fact that we handle to much webSockets connections. Try to remove connections and update connections limit", e.what());
-            //_connectionsManager.removeSomeConnectionsAndDecreaseConnectionsLimit(100);
-        }
+        // Create new session each time executed, since it is new session..
+        TSession session(ioc, _ctx, _host, _port, _symbolsPath, this); // pass "this" as event to update
+        spdlog::info("Try to get exchangeinfo");
+        session.run();
+        ioc.run(); // Blocks session
     }
 
     void setTimeOut(size_t sec)

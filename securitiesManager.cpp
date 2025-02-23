@@ -101,4 +101,7 @@ void BinanceSession::onWrite(beast::error_code ec, std::size_t bytes_transferred
 void BinanceSession::fail(beast::error_code ec, char const* what) 
 {
     spdlog::error("BinanceSession error: {}: {}. Program will try again in given timeout(see config.toml)", what, ec.message());
+    // notify in case of failure.
+    if(_eventToNotify)
+        _eventToNotify->endEvent();
 }

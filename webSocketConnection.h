@@ -70,6 +70,8 @@ public:
     void setStopped(bool in) { stopped_ = stopping_ = in; }
 
     bool isStopping() { return stopping_; }
+
+    bool isFailed() { return failed_; }
     
 private:
     
@@ -105,6 +107,7 @@ private:
     int id_;
     bool stopping_ = false;
     bool stopped_ = false;
+    bool failed_ = false;
 public:
     static FailedConnectionsContainer failedConnections;
 };
