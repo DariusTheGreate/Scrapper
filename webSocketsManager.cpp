@@ -161,6 +161,31 @@ void WebSocketsManager::checkConnectionsLimit()
         spdlog::info("Current soft limit for number of open file descriptors: {}", limit.rlim_cur);
         spdlog::info("Maximum soft limit for number of open file descriptors: {}", limit.rlim_max);
         // Use only half of available file descriptors for now, for stablility
+
+        const rlim_t newLimit = 8912;
+
+        // Check if the new limit exceeds the maximum allowed limit
+        if (newLimit > limit.rlim_max)
+        {
+            spdlog::warn("Requested limit {} exceeds maximum allowable limit {}. Adjusting to maximum.", newLimit, limit.rlim_max);
+            _connectionsLimit = limit.rlim_max;
+        }
+        else
+        {
+            _connectionsLimit = newLimit;
+        }
+
+        limit.rlim_cur = _connectionsLimit;
+        
+        if (setrlimit(RLIMIT_NOFILE, &limit) == 0)
+        {
+            spdlog::info("Successfully set soft limit for descriptors to: {}", _connectionsLimit);
+        }
+        else
+        {
+            spdlog::error("Failed to set soft limit for descriptors: {}", strerror(errno));
+        }
+
         _connectionsLimit = limit.rlim_cur / 2;
         spdlog::info("Current application limit for descriptors: {}", _connectionsLimit);
     }
